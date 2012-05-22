@@ -82,6 +82,23 @@ def byteOrder(num):
     else:
         raise ElfException("Invalid value for byte order " + str(num))
 
+class Section:
+    def __init__(self, sh_name, sh_type, sh_flags, sh_addr, sh_offset, 
+                       sh_size, sh_link, sh_info, sh_addralign, sh_entsize,
+                       name, index):
+        self.sh_name = sh_name
+        self.sh_type = sh_type
+        self.sh_flags = sh_flags
+        self.sh_addr = sh_addr
+        self.sh_offset = sh_offset
+        self.sh_size = sh_size
+        self.sh_link = sh_link
+        self.sh_info = sh_info
+        self.sh_addralign = sh_addralign
+        self.sh_entsize = sh_entsize
+        self.name = name
+        self.index = index
+
 def read_sections(file, offset, entry_size, entries, convert, strings):
     file.seek(offset)
     for i in range(0,entries):
@@ -110,7 +127,10 @@ def read_sections(file, offset, entry_size, entries, convert, strings):
         sh_addralign = get(word_size)
         sh_entsize = get(word_size)
 
-        print "Section[%d] name (%d) is '%s'" % (i, sh_name, getString(sh_name))
+        # print "Section[%d] name (%d) is '%s'" % (i, sh_name, getString(sh_name))
+        yield Section(sh_name, sh_type, sh_flags, sh_addr, sh_offset, sh_size,
+                      sh_link, sh_info, sh_addralign, sh_entsize, getString(sh_name), i)
+
 
 def read_string_section(file, offset, entry_size, convert, string_index):
     file.seek(offset + entry_size * string_index)
@@ -134,6 +154,28 @@ def read_string_section(file, offset, entry_size, convert, string_index):
 
     file.seek(sh_offset)
     return file.read(sh_size)
+
+class X86Instruction:
+    def __init__(self, file):
+        self.opcode = ord(file.read(1))
+        self.length = 1
+
+    # The raw bytes that make up this instruction
+    def raw(self):
+        return [self.opcode]
+
+    # The canonical string of this instruction
+    def __str__(self):
+        if self.opcode == 0x31:
+            return 'xor'
+        return '?'
+
+def disassemble(file, offset, size):
+    file.seek(offset)
+    while size > 0:
+        instruction = X86Instruction(file)
+        size -= instruction.length
+        print "%s: %s" % (' '.join([hex(n) for n in instruction.raw()]), instruction)
 
 def read_header(file):
     # contains magic bytes and other important information
@@ -186,7 +228,10 @@ def read_header(file):
 
     string_section = read_string_section(file, shoff, shentsize, numer, shstrndx)
 
-    read_sections(file, shoff, shentsize, shnum, numer, string_section)
+    for section in read_sections(file, shoff, shentsize, shnum, numer, string_section):
+        # print "Section(%d) is %s" % (section.index, section.name)
+        if section.name == ".text":
+            disassemble(file, section.sh_offset, section.sh_size)
 
 def read(file):
     read_header(file)
