@@ -1,0 +1,15 @@
+This is an attempt at a decompiler. The source language is binary/assembly and the
+target language will be something high level, at least C but preferably python or
+scheme or something.
+
+Initial plan:
+  Build these modules.
+
+  disassembler - converts binary code into assembly
+    would like to support x86, ppc, and arm but start with x86
+  static analysis - learn various features about the assembly program
+  decompiler - use these properties to generate high level code
+
+Existing work:
+  java decompilers - 
+  binary to C decompiler - 
